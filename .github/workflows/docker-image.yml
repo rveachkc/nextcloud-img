@@ -3,6 +3,7 @@ name: Docker Image
 on:
     push:
     pull_request:
+    workflow_dispatch:
 
 env:
     REGISTRY: docker.io
