@@ -1,0 +1,53 @@
+# .github/workflows/check-upstream-image.yml
+name: Check Upstream Docker Image
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Runs daily at midnight UTC
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check for upstream image updates
+      id: check
+      run: |
+        # Replace with the upstream image you want to track
+        UPSTREAM_IMAGE="library/nextcloud:production-fpm"
+        
+        # Get the current digest of the upstream image
+        CURRENT_DIGEST=$(docker pull $UPSTREAM_IMAGE | grep "Digest" | awk '{print $2}')
+        
+        # Store the last known digest in a file
+        DIGEST_FILE=".last_digest"
+        if [ -f "$DIGEST_FILE" ]; then
+          LAST_DIGEST=$(cat $DIGEST_FILE)
+        else
+          LAST_DIGEST=""
+        fi
+
+        echo "Current Digest: $CURRENT_DIGEST"
+        echo "Last Known Digest: $LAST_DIGEST"
+
+        # Compare digests
+        if [ "$CURRENT_DIGEST" != "$LAST_DIGEST" ]; then
+          echo "New image detected!"
+          echo "$CURRENT_DIGEST" > $DIGEST_FILE
+          echo "::set-output name=updated::true"
+        else
+          echo "No updates found."
+          echo "::set-output name=updated::false"
+        fi
+
+    - name: Trigger Build Workflow
+      if: steps.check.outputs.updated == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: "docker-image.yml",
+            ref: "main",
+          })
