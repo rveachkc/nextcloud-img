@@ -51,3 +51,4 @@ jobs:
             workflow_id: "docker-image.yml",
             ref: "main",
           })
+    permissions: write-all
